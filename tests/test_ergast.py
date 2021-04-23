@@ -28,7 +28,7 @@ class TestQueries(object):
     def test_ergast_season_call(self):
         query = QuerySeason(season=None, race=None, filters=None)
         data = query.call()
-        assert data
+        assert data is not None
 
     def test_ergast_season_query(self):
         query = QuerySeason(season=None, race=None, filters=None)

@@ -1,4 +1,7 @@
 import requests
+import pandas as pd
+
+from pandas import DataFrame
 
 """
 This package provides interfaces to the Ergast API.
@@ -13,6 +16,7 @@ Overview
 All API queries require a GET request using a URL of the form:
 http[s]://ergast.com/api/<series>/<season>/<round>/...
 """
+
 
 class ErgastFilters(object):
     """List of common enums for Ergast filters"""
@@ -41,6 +45,8 @@ class QueryBase(object):
         ErgastFilters.STATUS,
     ]
 
+    JSON_TABLE = ""
+
     def __init__(self, season=None, race=None, filters=None):
         """Initialize a new object
 
@@ -68,6 +74,9 @@ class QueryBase(object):
             str -- string to add to the url
         """
         raise NotImplementedError
+
+    def format_data(self, json_data) -> DataFrame:
+        return json_data
 
     def get_filter(self) -> str:
         """Concatenate filters together
@@ -102,7 +111,7 @@ class QueryBase(object):
         assert r.status_code == 200
         json_data = r.json()
 
-        return json_data
+        return self.format_data(json_data)
 
     def raise_season_not_supported(self) -> None:
         raise ValueError("Season is not supported for this query")
@@ -116,6 +125,8 @@ class QueryBase(object):
 
 class QuerySeason(QueryBase):
     """Query object for querying Season level data"""
+
+    JSON_TABLE = "SeasonTable"
 
     def __init__(self, season=None, race=None, filters=None) -> None:
         super(QuerySeason, self).__init__(season=season, race=race, filters=filters)
@@ -136,3 +147,6 @@ class QuerySeason(QueryBase):
             str -- string to add to url
         """
         return "/seasons"
+
+    def format_data(self, json_data) -> DataFrame:
+        return DataFrame(json_data["MRData"]["SeasonTable"]["Seasons"])

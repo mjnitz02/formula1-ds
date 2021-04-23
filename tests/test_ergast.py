@@ -18,7 +18,6 @@ class TestQueries(object):
         ],
     )
     def test_ergast_query_default_filters(self, filter, supported):
-
         query = QueryBase(season="current", race=None, filters={filter: 1})
         if supported:
             query.check_filters()

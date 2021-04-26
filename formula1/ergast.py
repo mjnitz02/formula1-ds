@@ -1,5 +1,5 @@
 import requests
-import pandas as pd
+import numpy as np
 
 from pandas import DataFrame
 
@@ -45,7 +45,10 @@ class QueryBase(object):
         ErgastFilters.STATUS,
     ]
 
-    JSON_TABLE = ""
+    supports_season = False
+    requires_season = False
+    supports_race = False
+    requires_race = False
 
     def __init__(self, season=None, race=None, filters=None):
         """Initialize a new object
@@ -60,12 +63,51 @@ class QueryBase(object):
         self.supported_filters = self.ALL_FILTERS
         self.filters = filters
 
+        self.check_season()
+        self.check_race()
+        self.check_filters()
+
     def check_filters(self) -> None:
         """Check filters are valid"""
         if self.filters is not None:
             for filt in self.filters.keys():
                 if filt not in self.supported_filters:
                     self.raise_filter_not_supported(filt)
+
+    def check_season(self) -> None:
+        """Check the season value is valid"""
+        if self.supports_season:
+            if self.requires_season and self.season is None:
+                raise ValueError("Season is required for this query")
+
+            if isinstance(self.season, str):
+                if self.season != "current":
+                    raise ValueError(
+                        "Season supports the string value 'current' or an integer between 1950 and 2021"
+                    )
+            elif self.season is not None:
+                self.season = np.int(self.season)
+                if self.season < 1950 or self.season > 2021:
+                    raise ValueError(
+                        "Season supports the string value 'current' or integers between 1950 and 2021"
+                    )
+        else:
+            if self.season is not None:
+                raise ValueError("Season is not supported for this query")
+
+    def check_race(self) -> None:
+        """Check the season value is valid"""
+        if self.supports_race:
+            if self.requires_race and self.race is None:
+                raise ValueError("Race is required for this query")
+
+            if self.race is not None:
+                self.race = np.int(self.race)
+                if self.race < 1 or self.race > 23:
+                    raise ValueError("Race supports integers between 1 and 23")
+        else:
+            if self.race is not None:
+                raise ValueError("Race is not supported for this query")
 
     def get_data(self) -> str:
         """Get data should be implemented in the child functions
@@ -100,7 +142,7 @@ class QueryBase(object):
         filter = self.get_filter()
         return self.URL_FORMAT.format(base=self.BASE_URL, data=data, filter=filter)
 
-    def call(self) -> str:
+    def call(self, keep_url=False) -> str:
         """Submit a call to the Ergast API
 
         Returns:
@@ -110,8 +152,19 @@ class QueryBase(object):
 
         assert r.status_code == 200
         json_data = r.json()
+        formatted_data = self.format_data(json_data)
 
-        return self.format_data(json_data)
+        if not keep_url:
+            if (
+                isinstance(formatted_data, DataFrame)
+                and "url" in formatted_data.columns
+            ):
+                formatted_data = formatted_data.drop(columns=["url"])
+
+        return formatted_data
+
+    def raise_season_required(self) -> None:
+        raise ValueError("Season is required for this query")
 
     def raise_season_not_supported(self) -> None:
         raise ValueError("Season is not supported for this query")
@@ -126,18 +179,8 @@ class QueryBase(object):
 class QuerySeason(QueryBase):
     """Query object for querying Season level data"""
 
-    JSON_TABLE = "SeasonTable"
-
-    def __init__(self, season=None, race=None, filters=None) -> None:
-        super(QuerySeason, self).__init__(season=season, race=race, filters=filters)
-
-        if self.season is not None:
-            self.raise_season_not_supported()
-
-        if self.race is not None:
-            self.raise_race_not_supported()
-
-        self.check_filters()
+    def __init__(self, **kwargs) -> None:
+        super(QuerySeason, self).__init__(**kwargs)
 
     def get_data(self) -> str:
         """Return data for seasons. Seasons does not have subfiltering
@@ -150,3 +193,56 @@ class QuerySeason(QueryBase):
 
     def format_data(self, json_data) -> DataFrame:
         return DataFrame(json_data["MRData"]["SeasonTable"]["Seasons"])
+
+
+class QueryRaceSchedule(QueryBase):
+    """Query object for querying Season level data"""
+
+    supports_season = True
+    requires_season = True
+    supports_race = True
+
+    def __init__(self, **kwargs) -> None:
+        super(QueryRaceSchedule, self).__init__(**kwargs)
+
+    def get_data(self) -> str:
+        """Return data for seasons. Seasons does not have subfiltering
+        directly on it and does not support season and race specifications.
+
+        Returns:
+            str -- string to add to url
+        """
+        if self.race:
+            return "/{}/{}".format(self.season, self.race)
+        else:
+            return "/{}".format(self.season)
+
+    def format_data(self, json_data) -> DataFrame:
+        return DataFrame(json_data["MRData"]["RaceTable"]["Races"])
+
+
+class QueryRaceResults(QueryBase):
+    """Query object for querying Season level data"""
+
+    supports_season = True
+    requires_season = True
+    supports_race = True
+    requires_race = True
+
+    def __init__(self, **kwargs) -> None:
+        super(QueryRaceResults, self).__init__(**kwargs)
+
+    def get_data(self) -> str:
+        """Return data for seasons. Seasons does not have subfiltering
+        directly on it and does not support season and race specifications.
+
+        Returns:
+            str -- string to add to url
+        """
+        if self.race:
+            return "/{}/{}/results".format(self.season, self.race)
+        else:
+            return "/{}/results".format(self.season)
+
+    def format_data(self, json_data) -> DataFrame:
+        return DataFrame(json_data["MRData"]["RaceTable"]["Races"][0]["Results"])

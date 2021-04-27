@@ -35,7 +35,7 @@ class QueryBase(object):
 
     BASE_URL = "https://ergast.com/api/f1"
     URL_FORMAT = "{base}{filter}{data}"
-    ALL_FILTERS = [
+    SUPPORTED_FILTERS = [
         ErgastFilters.CIRCUITS,
         ErgastFilters.CONSTRUCTORS,
         ErgastFilters.DRIVERS,
@@ -60,7 +60,7 @@ class QueryBase(object):
         """
         self.season = season
         self.race = race
-        self.supported_filters = self.ALL_FILTERS
+        self.supported_filters = self.SUPPORTED_FILTERS
         self.filters = filters
 
         self.check_season()
@@ -228,6 +228,15 @@ class QueryRaceResults(QueryBase):
     requires_season = True
     supports_race = True
     requires_race = True
+
+    SUPPORTED_FILTERS = [
+        ErgastFilters.CIRCUITS,
+        ErgastFilters.CONSTRUCTORS,
+        ErgastFilters.DRIVERS,
+        ErgastFilters.GRID,
+        ErgastFilters.FASTEST,
+        ErgastFilters.STATUS,
+    ]
 
     def __init__(self, **kwargs) -> None:
         super(QueryRaceResults, self).__init__(**kwargs)

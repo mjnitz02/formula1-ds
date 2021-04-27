@@ -1,6 +1,6 @@
 import pytest
 
-from formula1.ergast import ErgastFilters, QueryBase, QuerySeason
+from formula1.ergast import ErgastFilters, QueryBase, QueryRaceResults, QueryRaceSchedule, QuerySeason
 
 
 class TestQueries(object):
@@ -108,3 +108,75 @@ class TestQueries(object):
         query_url = query.get_url()
 
         assert query_url == "https://ergast.com/api/f1/results/1/drivers/1/seasons"
+
+    def test_ergast_season_query_takes_no_season_or_race(self):
+        with pytest.raises(ValueError):
+            QuerySeason(season="something", race=None, filters=None)
+
+        with pytest.raises(ValueError):
+            QuerySeason(season=None, race="something", filters=None)
+
+        with pytest.raises(ValueError):
+            QuerySeason(season="something", race="something", filters=None)
+
+
+    def test_ergast_race_schedule_query(self):
+        query = QueryRaceSchedule(season="current", race=None, filters=None)
+        query_url = query.get_url()
+
+        assert query_url == "https://ergast.com/api/f1/current"
+
+        query = QueryRaceSchedule(season="current", race=2, filters=None)
+        query_url = query.get_url()
+
+        assert query_url == "https://ergast.com/api/f1/current/2"
+
+        query = QueryRaceSchedule(season="current", race=2, filters={ErgastFilters.RESULTS: 1})
+        query_url = query.get_url()
+
+        assert query_url == "https://ergast.com/api/f1/results/1/current/2"
+
+        query = QueryRaceSchedule(
+            season="current",
+            race=2,
+            filters={ErgastFilters.RESULTS: 1, ErgastFilters.DRIVERS: 1},
+        )
+        query_url = query.get_url()
+
+        assert query_url == "https://ergast.com/api/f1/results/1/drivers/1/current/2"
+
+    def test_ergast_race_schedule_query_requires_season(self):
+        with pytest.raises(ValueError):
+            QueryRaceSchedule(season=None, race=None, filters=None)
+
+
+    def test_ergast_race_results_query(self):
+        query = QueryRaceResults(season="current", race=2, filters=None)
+        query_url = query.get_url()
+
+        assert query_url == "https://ergast.com/api/f1/current/2/results"
+
+        query = QueryRaceResults(season="current", race=2, filters={ErgastFilters.GRID: 1})
+        query_url = query.get_url()
+
+        assert query_url == "https://ergast.com/api/f1/grid/1/current/2/results"
+
+        query = QueryRaceResults(
+            season="current",
+            race=2,
+            filters={ErgastFilters.GRID: 1, ErgastFilters.DRIVERS: 1},
+        )
+        query_url = query.get_url()
+
+        assert query_url == "https://ergast.com/api/f1/grid/1/drivers/1/current/2/results"
+
+    def test_ergast_race_results_query_requires_season_and_race(self):
+        with pytest.raises(ValueError):
+            QueryRaceResults(season=None, race=None, filters=None)
+
+        with pytest.raises(ValueError):
+            QueryRaceResults(season="current", race=None, filters=None)
+
+    def test_ergast_race_results_query_does_not_support_results(self):
+        with pytest.raises(ValueError):
+            QueryRaceResults(season="current", race=1, filters={ErgastFilters.RESULTS: 1})

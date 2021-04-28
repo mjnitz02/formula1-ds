@@ -6,6 +6,7 @@ from formula1.ergast import (
     QueryRaceResults,
     QueryRaceSchedule,
     QuerySeason,
+    QueryQualifyingResults,
 )
 
 
@@ -192,3 +193,28 @@ class TestQueries(object):
             QueryRaceResults(
                 season="current", race=1, filters={ErgastFilters.RESULTS: 1}
             )
+
+    def test_ergast_qualifying_results_query(self):
+        query = QueryQualifyingResults(season="current", race=2, filters=None)
+        query_url = query.get_url()
+
+        assert query_url == "https://ergast.com/api/f1/current/2/qualifying"
+
+        query = QueryQualifyingResults(
+            season="current", race=2, filters={ErgastFilters.GRID: 1}
+        )
+        query_url = query.get_url()
+
+        assert query_url == "https://ergast.com/api/f1/grid/1/current/2/qualifying"
+
+        query = QueryQualifyingResults(
+            season="current",
+            race=2,
+            filters={ErgastFilters.GRID: 1, ErgastFilters.DRIVERS: 1},
+        )
+        query_url = query.get_url()
+
+        assert (
+            query_url
+            == "https://ergast.com/api/f1/grid/1/drivers/1/current/2/qualifying"
+        )

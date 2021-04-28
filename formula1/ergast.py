@@ -255,3 +255,32 @@ class QueryRaceResults(QueryBase):
 
     def format_data(self, json_data) -> DataFrame:
         return DataFrame(json_data["MRData"]["RaceTable"]["Races"][0]["Results"])
+
+
+class QueryQualifyingResults(QueryBase):
+    """Query object for querying Season level data"""
+
+    supports_season = True
+    requires_season = True
+    supports_race = True
+    requires_race = True
+
+    def __init__(self, **kwargs) -> None:
+        super(QueryQualifyingResults, self).__init__(**kwargs)
+
+    def get_data(self) -> str:
+        """Return data for seasons. Seasons does not have subfiltering
+        directly on it and does not support season and race specifications.
+
+        Returns:
+            str -- string to add to url
+        """
+        if self.race:
+            return "/{}/{}/qualifying".format(self.season, self.race)
+        else:
+            return "/{}/qualifying".format(self.season)
+
+    def format_data(self, json_data) -> DataFrame:
+        return DataFrame(
+            json_data["MRData"]["RaceTable"]["Races"][0]["QualifyingResults"]
+        )

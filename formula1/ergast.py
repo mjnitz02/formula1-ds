@@ -306,7 +306,6 @@ class QueryQualifyingResults(QueryBase):
         )
 
 
-
 class QueryLapTimes(QueryBase):
     """Query object for querying Season level data"""
 

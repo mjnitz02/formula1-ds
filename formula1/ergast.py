@@ -49,8 +49,10 @@ class QueryBase(object):
     requires_season = False
     supports_race = False
     requires_race = False
+    supports_lap = False
+    requires_lap = False
 
-    def __init__(self, season=None, race=None, filters=None):
+    def __init__(self, season=None, race=None, lap=None, filters=None):
         """Initialize a new object
 
         Keyword Arguments:
@@ -60,11 +62,13 @@ class QueryBase(object):
         """
         self.season = season
         self.race = race
+        self.lap = lap
         self.supported_filters = self.SUPPORTED_FILTERS
         self.filters = filters
 
         self.check_season()
         self.check_race()
+        self.check_lap()
         self.check_filters()
 
     def check_filters(self) -> None:
@@ -108,6 +112,22 @@ class QueryBase(object):
         else:
             if self.race is not None:
                 raise ValueError("Race is not supported for this query")
+
+    def check_lap(self) -> None:
+        """Check the season value is valid"""
+        if self.supports_lap:
+            if self.requires_lap and self.lap is None:
+                raise ValueError("Lap is required for this query")
+
+            if self.lap is not None:
+                self.lap = np.int(self.lap)
+                if self.lap < 1:
+                    raise ValueError("Lap supports integers values greater than 1")
+                if self.lap > 100:
+                    raise ValueError("No races have more than 100 laps")
+        else:
+            if self.lap is not None:
+                raise ValueError("Lap is not supported for this query")
 
     def get_data(self) -> str:
         """Get data should be implemented in the child functions
@@ -283,4 +303,34 @@ class QueryQualifyingResults(QueryBase):
     def format_data(self, json_data) -> DataFrame:
         return DataFrame(
             json_data["MRData"]["RaceTable"]["Races"][0]["QualifyingResults"]
+        )
+
+
+class QueryLapTimes(QueryBase):
+    """Query object for querying Season level data"""
+
+    supports_season = True
+    requires_season = True
+    supports_race = True
+    requires_race = True
+    supports_lap = True
+    requires_lap = True
+
+    SUPPORTED_FILTERS = []
+
+    def __init__(self, **kwargs) -> None:
+        super(QueryLapTimes, self).__init__(**kwargs)
+
+    def get_data(self) -> str:
+        """Return data for seasons. Seasons does not have subfiltering
+        directly on it and does not support season and race specifications.
+
+        Returns:
+            str -- string to add to url
+        """
+        return "/{}/{}/laps/{}".format(self.season, self.race, self.lap)
+
+    def format_data(self, json_data) -> DataFrame:
+        return DataFrame(
+            json_data["MRData"]["RaceTable"]["Races"][0]["Laps"]["Timings"]
         )

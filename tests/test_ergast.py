@@ -7,6 +7,7 @@ from formula1.ergast import (
     QueryRaceSchedule,
     QuerySeason,
     QueryQualifyingResults,
+    QueryLapTimes,
 )
 
 
@@ -90,6 +91,34 @@ class TestQueries(object):
         else:
             with pytest.raises(ValueError):
                 TestQuery(race=race)
+
+    @pytest.mark.parametrize(
+        "supports,requires,lap,result",
+        [
+            (True, False, None, True),
+            (True, True, 1, True),
+            (True, True, 10, True),
+            (True, True, 100, True),
+            # Lap not allowed
+            (False, False, 1, False),
+            # Lap required but not provided
+            (True, True, None, False),
+            # Lap is bad values
+            (True, True, -1, False),
+            (True, True, 101, False),
+        ],
+    )
+    def test_ergast_lap_values(self, supports, requires, lap, result):
+        class TestQuery(QueryBase):
+            supports_season = False
+            supports_lap = supports
+            requires_lap = requires
+
+        if result:
+            TestQuery(lap=lap)
+        else:
+            with pytest.raises(ValueError):
+                TestQuery(lap=lap)
 
     def test_ergast_season_call(self):
         query = QuerySeason(season=None, race=None, filters=None)
@@ -218,3 +247,15 @@ class TestQueries(object):
             query_url
             == "https://ergast.com/api/f1/grid/1/drivers/1/current/2/qualifying"
         )
+
+    def test_ergast_lap_times_query(self):
+        query = QueryLapTimes(season="current", race=2, lap=1, filters=None)
+        query_url = query.get_url()
+
+        assert query_url == "https://ergast.com/api/f1/current/2/laps/1"
+
+        # Lap times doesn't support any filters
+        with pytest.raises(ValueError):
+            QueryLapTimes(
+                season="current", race=2, lap=1, filters={ErgastFilters.GRID: 1}
+            )
